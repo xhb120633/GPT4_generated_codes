@@ -17,22 +17,25 @@ from collections import deque
 
 class MazeEnv(gym.Env):
     def __init__(self):
-            super(MazeEnv, self).__init__()
-    
-            self.maze_size = (16, 16)
-            self.state = None
-            self.goal_states = []  # Add goal states coordinates as tuples (e.g., (3, 4), (10, 12))
-    
-            self.action_space = spaces.Discrete(4)
-            self.observation_space = spaces.Box(low=0, high=max(self.maze_size), shape=(2,), dtype=np.int)
+        super(MazeEnv, self).__init__()
 
+        self.size = 32
+        self.start = (0, 0)
+        self.state = self.start
+        self.goal_positions = []  
+        self.obstacle_positions = []
+
+        self.action_space = spaces.Discrete(4)
+        self.observation_space = spaces.Box(low=0, high=self.size - 1, shape=(2,), dtype=np.int)
+
+        self.generate_maze()
 
     def generate_maze(self):
         np.random.seed(2023)
         free_positions = [(i, j) for i in range(self.size) for j in range(self.size)]
         free_positions.remove(self.start)
 
-        num_obstacles = self.size * self.size // 8
+        num_obstacles = self.size * self.size // 16
         self.obstacle_positions = [free_positions.pop(np.random.randint(len(free_positions))) for _ in range(num_obstacles)]
 
         for _ in range(2):
@@ -69,25 +72,25 @@ class MazeEnv(gym.Env):
         return self.state
 
     def render(self, mode='human'):
-         fig, ax = plt.subplots(figsize=(8, 8))
-         for i in range(self.size):
-             for j in range(self.size):
-                 if (i, j) in self.obstacle_positions:
-                     obstacle = patches.Rectangle((j, self.size - 1 - i), 1, 1, facecolor='black')
-                     ax.add_patch(obstacle)
-                 elif (i, j) in self.goal_positions:
-                     goal = patches.Rectangle((j, self.size - 1 - i), 1, 1, facecolor='green')
-                     ax.add_patch(goal)
-                 elif (i, j) == self.state:
-                     agent = patches.Rectangle((j, self.size - 1 - i), 1, 1, facecolor='blue')
-                     ax.add_patch(agent)
-         plt.xticks(range(self.size), fontsize=8)
-         plt.yticks(range(self.size), fontsize=8)
-         plt.xlim(0, self.size)
-         plt.ylim(0, self.size)
-         plt.grid()
-         plt.gca().invert_yaxis()
-         plt.show()
+        fig, ax = plt.subplots(figsize=(8, 8))
+        for i in range(self.size):
+            for j in range(self.size):
+                if (i, j) in self.obstacle_positions:
+                    obstacle = patches.Rectangle((j, self.size - 1 - i), 1, 1, facecolor='black')
+                    ax.add_patch(obstacle)
+                elif (i, j) in self.goal_positions:
+                    goal = patches.Rectangle((j, self.size - 1 - i), 1, 1, facecolor='green')
+                    ax.add_patch(goal)
+                elif (i, j) == self.state:
+                    agent = patches.Rectangle((j, self.size - 1 - i), 1, 1, facecolor='blue')
+                    ax.add_patch(agent)
+        plt.xticks(range(self.size), fontsize=8)
+        plt.yticks(range(self.size), fontsize=8)
+        plt.xlim(0, self.size)
+        plt.ylim(0, self.size)
+        plt.grid()
+        plt.gca().invert_yaxis()
+        plt.show()
          
          
 class DQNAgent:
@@ -100,7 +103,7 @@ class DQNAgent:
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
         self.memory = deque(maxlen=2000)
-        self.batch_size = 64
+        self.batch_size = 128
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -172,6 +175,7 @@ class DQNAgent:
         
         
 # Training function for the DQN agent
+
 def train_dqn(env, agent, episodes, target_update_interval=100):
     rewards = []
 
@@ -193,6 +197,7 @@ def train_dqn(env, agent, episodes, target_update_interval=100):
         if (episode + 1) % target_update_interval == 0:
             agent.update_target_network()
             print(f"Episode: {episode + 1}, Average Reward: {np.mean(rewards[-100:])}")
+            print(f"Episode: {episode + 1}, Total Reward: {total_reward}")
 
     return rewards
 
@@ -215,7 +220,7 @@ action_size = maze_env.action_space.n
 dqn_agent = DQNAgent(state_size, action_size)
 
 # Train the agent
-num_episodes = 500
+num_episodes = 1000
 rewards = train_dqn(maze_env, dqn_agent, num_episodes)
 
 
