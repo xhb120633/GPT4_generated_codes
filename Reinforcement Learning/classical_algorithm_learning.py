@@ -10,11 +10,6 @@ from gym import spaces
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import random
-from collections import deque
 
 
 class MazeEnv(gym.Env):
@@ -179,85 +174,6 @@ def expected_sarsa(env, episodes, alpha, gamma, epsilon):
         rewards.append(total_reward)
 
     return {'q_table': q_table, 'rewards': rewards}
-
-class DQNAgent:
-    def __init__(self, state_size, action_size):
-        self.state_size = state_size
-        self.action_size = action_size
-        self.gamma = 0.99
-        self.epsilon = 1.0
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
-        self.learning_rate = 0.001
-        self.memory = deque(maxlen=2000)
-        self.batch_size = 64
-
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        self.q_network = self.build_model().to(self.device)
-        self.target_network = self.build_model().to(self.device)
-        self.target_network.load_state_dict(self.q_network.state_dict())
-        self.target_network.eval()
-
-        self.optimizer = optim.Adam(self.q_network.parameters(), lr=self.learning_rate)
-
-    def build_model(self):
-        model = nn.Sequential(
-            nn.Linear(self.state_size, 64),
-            nn.ReLU(),
-            nn.Linear(64, 64),
-            nn.ReLU(),
-            nn.Linear(64, self.action_size)
-        )
-        return model
-
-    def remember(self, state, action, reward, next_state, done):
-        self.memory.append((state, action, reward, next_state, done))
-
-    def choose_action(self, state):
-        if np.random.rand() <= self.epsilon:
-            return random.randrange(self.action_size)
-
-        state_tensor = torch.FloatTensor(state).to(self.device)
-        q_values = self.q_network(state_tensor)
-        return np.argmax(q_values.detach().cpu().numpy())
-
-    def replay(self):
-        if len(self.memory) < self.batch_size:
-            return
-
-        minibatch = random.sample(self.memory, self.batch_size)
-        states, actions, rewards, next_states, dones = zip(*minibatch)
-
-        states = torch.FloatTensor(states).to(self.device)
-        actions = torch.LongTensor(actions).to(self.device)
-        rewards = torch.FloatTensor(rewards).to(self.device)
-        next_states = torch.FloatTensor(next_states).to(self.device)
-        dones = torch.BoolTensor(dones).to(self.device)
-
-        q_values = self.q_network(states)
-        next_q_values = self.target_network(next_states)
-
-        q_values = q_values.gather(1, actions.unsqueeze(1)).squeeze()
-        next_q_values = next_q_values.max(1)[0]
-        target = rewards + (1 - dones.float()) * self.gamma * next_q_values
-
-        loss = nn.functional.smooth_l1_loss(q_values, target.detach())
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay
-
-    def update_target_network(self):
-        self.target_network.load_state_dict(self.q_network.state_dict())
-
-    def save(self, filepath):
-        torch.save(self.q_network.state_dict(), filepath)
-
-    def load(self, filepath):
-        self.q_network.load_state_dict(torch.load(filepath))
 
 
 
