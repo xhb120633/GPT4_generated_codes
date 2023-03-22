@@ -19,7 +19,7 @@ class MazeEnv(gym.Env):
     def __init__(self):
         super(MazeEnv, self).__init__()
 
-        self.size = 32
+        self.size = 12
         self.start = (0, 0)
         self.state = self.start
         self.goal_positions = []  
@@ -94,19 +94,18 @@ class MazeEnv(gym.Env):
          
          
 class DQNAgent:
-    def __init__(self, state_size, action_size):
+    def __init__(self, env, state_size, action_size):
         self.state_size = state_size
         self.action_size = action_size
         self.gamma = 0.99
-        self.epsilon = 1.0
+        self.epsilon = 1
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
-        self.learning_rate = 0.001
+        self.learning_rate = 1e-3
         self.memory = deque(maxlen=2000)
         self.batch_size = 128
-
+        self.max_steps = env.size * env.size * 5
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
         self.q_network = self.build_model().to(self.device)
         self.target_network = self.build_model().to(self.device)
         self.target_network.load_state_dict(self.q_network.state_dict())
@@ -183,7 +182,8 @@ def train_dqn(env, agent, episodes, target_update_interval=100):
         state = env.reset()
         done = False
         total_reward = 0
-
+        step_count = 0
+        
         while not done:
             action = agent.choose_action(state)
             next_state, reward, done, _ = env.step(action)
@@ -191,7 +191,11 @@ def train_dqn(env, agent, episodes, target_update_interval=100):
             agent.replay()
             state = next_state
             total_reward += reward
-
+            
+            step_count += 1
+            if step_count >= agent.max_steps:
+                break
+            
         rewards.append(total_reward)
 
         if (episode + 1) % target_update_interval == 0:
@@ -217,7 +221,7 @@ maze_env = MazeEnv()
 # Create the DQN agent
 state_size = maze_env.observation_space.shape[0]
 action_size = maze_env.action_space.n
-dqn_agent = DQNAgent(state_size, action_size)
+dqn_agent = DQNAgent(maze_env, state_size, action_size)
 
 # Train the agent
 num_episodes = 1000

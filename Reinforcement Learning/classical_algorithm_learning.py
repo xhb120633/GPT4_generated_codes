@@ -99,13 +99,14 @@ def choose_action(state, q_table, epsilon, n_actions):
 def q_learning(env, episodes, alpha, gamma, epsilon, progress_interval=50):
     n_actions = env.action_space.n
     q_table = np.zeros((env.size, env.size, n_actions))
-
+    max_steps = env.size*env.size
+    
     rewards = []
     for episode in range(episodes):
         state = env.reset()
         total_reward = 0
         done = False
-
+        count = 0
         while not done:
             action = choose_action(state, q_table, epsilon, n_actions)
             next_state, reward, done, _ = env.step(action)
@@ -114,7 +115,10 @@ def q_learning(env, episodes, alpha, gamma, epsilon, progress_interval=50):
             # Update Q-table
             q_table[state][action] += alpha * (reward + gamma * np.max(q_table[next_state]) - q_table[state][action])
             state = next_state
-
+            count += 1
+            if count == max_steps:
+                break
+            
         rewards.append(total_reward)
         
         if (episode + 1) % progress_interval == 0:
@@ -126,13 +130,15 @@ def q_learning(env, episodes, alpha, gamma, epsilon, progress_interval=50):
 def sarsa(env, episodes, alpha, gamma, epsilon):
     n_actions = env.action_space.n
     q_table = np.zeros((env.size, env.size, n_actions))
-
+    max_steps = env.size*env.size
+    
     rewards = []
     for episode in range(episodes):
         state = env.reset()
         total_reward = 0
         done = False
-
+        
+        count =  0
         action = choose_action(state, q_table, epsilon, n_actions)
         while not done:
             next_state, reward, done, _ = env.step(action)
@@ -144,7 +150,10 @@ def sarsa(env, episodes, alpha, gamma, epsilon):
 
             state = next_state
             action = next_action
-
+            
+            count += 1
+            if count == max_steps:
+                break
         rewards.append(total_reward)
 
     return {'q_table': q_table, 'rewards': rewards}
@@ -152,13 +161,14 @@ def sarsa(env, episodes, alpha, gamma, epsilon):
 def expected_sarsa(env, episodes, alpha, gamma, epsilon):
     n_actions = env.action_space.n
     q_table = np.zeros((env.size, env.size, n_actions))
-
+    max_steps = env.size * env.size
     rewards = []
     for episode in range(episodes):
         state = env.reset()
         total_reward = 0
         done = False
-
+        
+        count = 0
         while not done:
             action = choose_action(state, q_table, epsilon, n_actions)
             next_state, reward, done, _ = env.step(action)
@@ -170,7 +180,11 @@ def expected_sarsa(env, episodes, alpha, gamma, epsilon):
             # Update Q-table
             q_table[state][action] += alpha * (reward + gamma * expected_q - q_table[state][action])
             state = next_state
-
+            
+            count += 1
+            if count == max_steps:
+                break
+            
         rewards.append(total_reward)
 
     return {'q_table': q_table, 'rewards': rewards}
