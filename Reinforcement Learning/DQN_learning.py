@@ -14,6 +14,7 @@ import torch.nn as nn
 import torch.optim as optim
 import random
 from collections import deque
+import seaborn as sns
 
 class MazeEnv(gym.Env):
     def __init__(self):
@@ -203,8 +204,21 @@ def train_dqn(env, agent, episodes, target_update_interval=100):
             print(f"Episode: {episode + 1}, Average Reward: {np.mean(rewards[-100:])}")
             print(f"Episode: {episode + 1}, Total Reward: {total_reward}")
 
-    return rewards
+    return rewards, agent.q_network
 
+def extract_policy(q_network, env):
+    policy = np.zeros(env.observation_space.n)
+    q_table = np.zeros((env.observation_space.n, env.action_space.n))
+
+    for state in range(env.observation_space.n):
+        state_tensor = torch.FloatTensor([state]).to(DQNAgent.device)
+        q_values = q_network(state_tensor)
+        q_values_np = q_values.detach().cpu().numpy()
+
+        q_table[state] = q_values_np
+        policy[state] = np.argmax(q_values_np)
+
+    return policy, q_table
 
 # Plot the training curve
 def plot_training_curve(rewards):
@@ -213,7 +227,22 @@ def plot_training_curve(rewards):
     plt.ylabel('Total Reward')
     plt.title('Training Curve')
     plt.show()
-    
+ 
+def visualize_q_table(q_table):
+    plt.figure(figsize=(10, 6))
+    sns.heatmap(q_table, annot=True, fmt=".2f", cmap="coolwarm")
+    plt.xlabel("Actions")
+    plt.ylabel("States")
+    plt.title("Q-Table Heatmap")
+    plt.show()
+        
+def visualize_policy(policy):
+    plt.figure(figsize=(10, 6))
+    plt.bar(range(len(policy)), policy)
+    plt.xlabel("States")
+    plt.ylabel("Actions")
+    plt.title("Policy")
+    plt.show()
     
 # Create the maze environment
 maze_env = MazeEnv()
@@ -225,7 +254,12 @@ dqn_agent = DQNAgent(maze_env, state_size, action_size)
 
 # Train the agent
 num_episodes = 1000
-rewards = train_dqn(maze_env, dqn_agent, num_episodes)
+rewards, trained_q_network = train_dqn(maze_env, DQNAgent, num_episodes )
+policy, q_table = extract_policy(trained_q_network, maze_env)
 
-
+##visualize performance
 plot_training_curve(rewards)
+##visualize the q table
+visualize_q_table(q_table)
+##visualize the policy
+visualize_policy(policy)
