@@ -105,7 +105,7 @@ class DQNAgent:
         self.learning_rate = 1e-3
         self.memory = deque(maxlen=2000)
         self.batch_size = 128
-        self.max_steps = env.size * env.size * 5
+        self.max_steps = env.size * env.size * 8
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.q_network = self.build_model().to(self.device)
         self.target_network = self.build_model().to(self.device)
@@ -176,7 +176,7 @@ class DQNAgent:
         
 # Training function for the DQN agent
 
-def train_dqn(env, agent, episodes, target_update_interval=100):
+def train_dqn(env, agent, episodes, target_update_interval=10):
     rewards = []
 
     for episode in range(episodes):
@@ -253,8 +253,8 @@ action_size = maze_env.action_space.n
 dqn_agent = DQNAgent(maze_env, state_size, action_size)
 
 # Train the agent
-num_episodes = 1000
-rewards, trained_q_network = train_dqn(maze_env, DQNAgent, num_episodes )
+num_episodes = 100
+rewards, trained_q_network = train_dqn(maze_env, dqn_agent, num_episodes )
 policy, q_table = extract_policy(trained_q_network, maze_env)
 
 ##visualize performance
