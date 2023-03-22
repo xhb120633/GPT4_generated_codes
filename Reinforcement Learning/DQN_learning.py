@@ -98,14 +98,14 @@ class DQNAgent:
     def __init__(self, env, state_size, action_size):
         self.state_size = state_size
         self.action_size = action_size
-        self.gamma = 0.99
+        self.gamma = 0.8
         self.epsilon = 1
         self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
-        self.learning_rate = 1e-3
+        self.epsilon_decay = 0.999
+        self.learning_rate = 5e-5
         self.memory = deque(maxlen=2000)
         self.batch_size = 128
-        self.max_steps = env.size * env.size * 8
+        self.max_steps = env.size * env.size * 4
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.q_network = self.build_model().to(self.device)
         self.target_network = self.build_model().to(self.device)
@@ -176,7 +176,7 @@ class DQNAgent:
         
 # Training function for the DQN agent
 
-def train_dqn(env, agent, episodes, target_update_interval=10):
+def train_dqn(env, agent, episodes, target_update_interval=40):
     rewards = []
 
     for episode in range(episodes):
@@ -206,17 +206,19 @@ def train_dqn(env, agent, episodes, target_update_interval=10):
 
     return rewards, agent.q_network
 
-def extract_policy(q_network, env):
-    policy = np.zeros(env.observation_space.n)
-    q_table = np.zeros((env.observation_space.n, env.action_space.n))
+def extract_policy(q_network, env, agent):
+    policy = np.zeros((env.size, env.size), dtype=int)
+    q_table = np.zeros((env.size, env.size, env.action_space.n))
 
-    for state in range(env.observation_space.n):
-        state_tensor = torch.FloatTensor([state]).to(DQNAgent.device)
-        q_values = q_network(state_tensor)
-        q_values_np = q_values.detach().cpu().numpy()
+    for i in range(env.size):
+        for j in range(env.size):
+            state = (i, j)
+            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(agent.device)
+            q_values = q_network(state_tensor)
+            q_values_np = q_values.detach().cpu().numpy()
 
-        q_table[state] = q_values_np
-        policy[state] = np.argmax(q_values_np)
+            q_table[state] = q_values_np
+            policy[state] = np.argmax(q_values_np)
 
     return policy, q_table
 
@@ -229,20 +231,41 @@ def plot_training_curve(rewards):
     plt.show()
  
 def visualize_q_table(q_table):
-    plt.figure(figsize=(10, 6))
-    sns.heatmap(q_table, annot=True, fmt=".2f", cmap="coolwarm")
-    plt.xlabel("Actions")
-    plt.ylabel("States")
-    plt.title("Q-Table Heatmap")
+    fig, axes = plt.subplots(nrows=q_table.shape[2], ncols=1, figsize=(10, 6 * q_table.shape[2]))
+    for i, ax in enumerate(axes):
+        sns.heatmap(q_table[:, :, i], annot=True, fmt=".2f", cmap="coolwarm", ax=ax)
+        ax.set_title(f"Action {i}")
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+    plt.tight_layout()
     plt.show()
         
-def visualize_policy(policy):
+def visualize_policy(env, policy):
+    arrow_map = {0: '↑', 1: '↓', 2: '←', 3: '→'}
+    policy_arrows = np.vectorize(arrow_map.get)(policy)
+
+    env_map = np.zeros_like(policy, dtype=object)
+
+    for i in range(env.size):
+        for j in range(env.size):
+            position = (i, j)
+            if position == env.start:
+                env_map[env.size - 1 - i, j] = 'S'
+            elif position in env.goal_positions:
+                env_map[env.size - 1 - i, j] = 'G'
+            elif position in env.obstacle_positions:
+                env_map[env.size - 1 - i, j] = 'X'
+            else:
+                env_map[env.size - 1 - i, j] = policy_arrows[i, j]
+
     plt.figure(figsize=(10, 6))
-    plt.bar(range(len(policy)), policy)
-    plt.xlabel("States")
-    plt.ylabel("Actions")
-    plt.title("Policy")
+    sns.heatmap(np.zeros_like(env_map, dtype=float), annot=env_map, fmt='', cmap="coolwarm", cbar=False, xticklabels=True, yticklabels=True, linewidths=0.5, linecolor='black')
+    plt.xlabel("X")
+    plt.ylabel("Y")
+    plt.title("Policy with Environment")
+    plt.gca().invert_yaxis()
     plt.show()
+
     
 # Create the maze environment
 maze_env = MazeEnv()
@@ -253,13 +276,13 @@ action_size = maze_env.action_space.n
 dqn_agent = DQNAgent(maze_env, state_size, action_size)
 
 # Train the agent
-num_episodes = 100
-rewards, trained_q_network = train_dqn(maze_env, DQNAgent, num_episodes )
-policy, q_table = extract_policy(trained_q_network, maze_env)
+num_episodes = 1000
+rewards, trained_q_network = train_dqn(maze_env, dqn_agent, num_episodes )
+policy, q_table = extract_policy(trained_q_network, maze_env,dqn_agent )
 
 ##visualize performance
 plot_training_curve(rewards)
 ##visualize the q table
 visualize_q_table(q_table)
 ##visualize the policy
-visualize_policy(policy)
+visualize_policy(maze_env,policy)
