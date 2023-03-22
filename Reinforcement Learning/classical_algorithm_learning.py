@@ -99,7 +99,7 @@ def choose_action(state, q_table, epsilon, n_actions):
 def q_learning(env, episodes, alpha, gamma, epsilon, progress_interval=50):
     n_actions = env.action_space.n
     q_table = np.zeros((env.size, env.size, n_actions))
-    max_steps = env.size*env.size
+    max_steps = env.size*env.size*5
     
     rewards = []
     for episode in range(episodes):
@@ -130,7 +130,7 @@ def q_learning(env, episodes, alpha, gamma, epsilon, progress_interval=50):
 def sarsa(env, episodes, alpha, gamma, epsilon):
     n_actions = env.action_space.n
     q_table = np.zeros((env.size, env.size, n_actions))
-    max_steps = env.size*env.size
+    max_steps = env.size*env.size*5
     
     rewards = []
     for episode in range(episodes):
@@ -161,7 +161,7 @@ def sarsa(env, episodes, alpha, gamma, epsilon):
 def expected_sarsa(env, episodes, alpha, gamma, epsilon):
     n_actions = env.action_space.n
     q_table = np.zeros((env.size, env.size, n_actions))
-    max_steps = env.size * env.size
+    max_steps = env.size * env.size *5
     rewards = []
     for episode in range(episodes):
         state = env.reset()
@@ -211,9 +211,9 @@ def plot_training_curve(rewards, title='Training Curve'):
 
 maze_env = MazeEnv()
 
-q_learning_agent = q_learning(maze_env, episodes=10000, alpha=0.3, gamma=0.99, epsilon=0.5)
-sarsa_agent = sarsa(maze_env, episodes=100, alpha=0.1, gamma=0.99, epsilon=0.1)
-expected_sarsa_agent = expected_sarsa(maze_env, episodes=100, alpha=0.1, gamma=0.99, epsilon=0.1)
+q_learning_agent = q_learning(maze_env, episodes=100000, alpha=0.4, gamma=0.99, epsilon=0.7)
+sarsa_agent = sarsa(maze_env, episodes=10000, alpha=0.1, gamma=0.99, epsilon=0.3)
+expected_sarsa_agent = expected_sarsa(maze_env, episodes=10000, alpha=0.1, gamma=0.99, epsilon=0.2)
 
 plot_q_table(q_learning_agent['q_table'])
 plot_training_curve(q_learning_agent['rewards'])

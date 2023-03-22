@@ -254,7 +254,7 @@ dqn_agent = DQNAgent(maze_env, state_size, action_size)
 
 # Train the agent
 num_episodes = 100
-rewards, trained_q_network = train_dqn(maze_env, dqn_agent, num_episodes )
+rewards, trained_q_network = train_dqn(maze_env, DQNAgent, num_episodes )
 policy, q_table = extract_policy(trained_q_network, maze_env)
 
 ##visualize performance
