@@ -27,7 +27,7 @@ class MazeEnv(gym.Env):
         self.obstacle_positions = []
 
         self.action_space = spaces.Discrete(4)
-        self.observation_space = spaces.Box(low=0, high=self.size - 1, shape=(2,), dtype=np.int)
+        self.observation_space = spaces.Box(low=0, high=self.size - 1, shape=(2,), dtype='int64')
 
         self.generate_maze()
 
